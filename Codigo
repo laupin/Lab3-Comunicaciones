@@ -1,0 +1,65 @@
+#include "UbidotsEsp32Mqtt.h"
+
+const char *UBIDOTS_TOKEN = "BBFF-UKlur5zHu41EBqoqCoq4UQFNJUazNO";  // Put here your Ubidots TOKEN
+const char *WIFI_SSID = "Santiago";      // Put here your Wi-Fi SSID
+const char *WIFI_PASS = "sachi514";      // Put here your Wi-Fi password
+const char *DEVICE_LABEL = "esp_8266";   // Put here your Device label to which data  will be published
+const char *VARIABLE_LABEL = "Humedad";
+const char *VARIABLE_LABEL2 = "Temperatura";// Put here your Variable label to which data  will be published
+const char *VARIABLE_LABEL3 = "Movimiento";
+const int PUBLISH_FREQUENCY = 500; // Update rate in milliseconds
+
+unsigned long timer;
+uint8_t analogPin = 34; // Pin used to read data from GPIO34 ADC_CH6.
+uint8_t analogPin2 = 33; // Pin used to read data from GPIO34 ADC_CH6.
+uint8_t  indi=0 ;
+Ubidots ubidots(UBIDOTS_TOKEN);
+void callback(char *topic, byte *payload, unsigned int length)
+{
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++)
+  {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
+
+void setup()
+{
+  // put your setup code here, to run once:
+  Serial.begin(115200);
+  // ubidots.setDebug(true);  // uncomment this to make debug messages available
+  ubidots.connectToWifi(WIFI_SSID, WIFI_PASS);
+  ubidots.setCallback(callback);
+  ubidots.setup();
+  ubidots.reconnect();
+  timer = millis();
+}
+
+void loop()
+{
+  // put your main code here, to run repeatedly:
+  if (!ubidots.connected())
+  {
+    ubidots.reconnect();
+  }
+  if (millis() - timer > PUBLISH_FREQUENCY) // triggers the routine every 5 seconds
+  {
+    float value = analogRead(analogPin);
+    float value2 = analogRead(analogPin2);
+    if(value2 < 2.0){
+      indi=0;}
+      if (value2 >= 2.0){
+        indi=1;  
+      }
+      
+    ubidots.add(VARIABLE_LABEL, value); // Insert your variable Labels and the value to be sent
+    ubidots.add(VARIABLE_LABEL2, value2); // Insert your variable Labels and the value to be sent
+    ubidots.add(VARIABLE_LABEL3, indi);
+    ubidots.publish(DEVICE_LABEL);
+    timer = millis();
+  }
+  ubidots.loop();
+}
